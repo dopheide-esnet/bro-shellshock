@@ -235,7 +235,17 @@ event smtp_request(c: connection, is_orig: bool, command: string, arg: string)
 		}
 	}
 
+@ifdef (DHCP::Msg)
+event dhcp_message(c: connection, is_orig: bool, msg: DHCP::Msg, options: DHCP::Options)
+	{
+	if ( options?$host_name && matcher in options$host_name )		
+		{
+		SumStats::observe("shellshock.possible_dhcp_victim", [$host=c$id$resp_h], [$str=options$host_name]);
+		SumStats::observe("shellshock.possible_dhcp_attacker", [$host=c$id$orig_h], [$str=options$host_name, $shellshock_victim=c$id$resp_h]);			
+		}
 
+	}
+@else
 event dhcp_ack(c: connection, msg: dhcp_msg, mask: addr, router: dhcp_router_list, lease: interval, serv_addr: addr, host_name: string)
 	{
 	if ( matcher in host_name )
@@ -244,6 +254,7 @@ event dhcp_ack(c: connection, msg: dhcp_msg, mask: addr, router: dhcp_router_lis
 		SumStats::observe("shellshock.possible_dhcp_attacker", [$host=c$id$orig_h], [$str=host_name, $shellshock_victim=c$id$resp_h]);
 		}
 	}
+@endif
 
 function observe_post_exploit_file(c: connection, f: fa_file, mime_type: string)
 	{
